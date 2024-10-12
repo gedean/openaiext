@@ -1,14 +1,11 @@
 require 'openai'
+
+require 'openaiext/model'
 require 'openaiext/messages'
 require 'openaiext/response_extender'
+require 'openaiext/agent'
 
 module OpenAIExt
-  GPT_BASIC_MODEL = ENV.fetch('OPENAI_GPT_BASIC_MODEL', 'gpt-4o-mini')
-  GPT_ADVANCED_MODEL = ENV.fetch('OPENAI_GPT_ADVANCED_MODEL', 'gpt-4o-2024-08-06')
-
-  O1_BASIC_MODEL = ENV.fetch('OPENAI_O1_BASIC_MODEL', 'o1-mini')
-  O1_ADVANCED_MODEL = ENV.fetch('OPENAI_O1_ADVANCED_MODEL', 'o1-preview')
-  
   MAX_TOKENS = ENV.fetch('OPENAI_MAX_TOKENS', 16_383).to_i
 
   def self.embeddings(input, model: 'text-embedding-3-large')
@@ -31,7 +28,7 @@ module OpenAIExt
   end
 
   def self.chat(messages:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil)
-    model = select_model(model)
+    model = OpenAIExt::Model.select(model)
     is_o1_model = model.start_with?('o1')
 
     messages = OpenAIExt::Messages.new(messages) unless messages.is_a?(OpenAIExt::Messages)
@@ -67,19 +64,4 @@ module OpenAIExt
   end
 
   def self.models = OpenAI::Client.new.models.list
-
-  def self.select_model(model)
-    case model
-    when :gpt_basic
-      GPT_BASIC_MODEL
-    when :gpt_advanced
-      GPT_ADVANCED_MODEL
-    when :o1_basic
-      O1_BASIC_MODEL
-    when :o1_advanced
-      O1_ADVANCED_MODEL
-    else
-      model
-    end
-  end
 end
