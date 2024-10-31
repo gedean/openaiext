@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name          = 'openaiext'
-  s.version       = '0.0.5'
+  s.version       = '0.0.6'
   s.date          = '2024-10-13'
   s.platform      = Gem::Platform::RUBY
   s.summary       = 'Ruby OpenAI Extended'
@@ -12,8 +12,7 @@ Gem::Specification.new do |s|
   s.required_ruby_version = '>= 3'
   s.homepage      = 'https://github.com/gedean/openaiext'
   s.license       = 'MIT'
-  s.add_dependency 'ruby-openai', '~> 7.3'
-  s.add_dependency 'anthropic', '~> 0.3'
+  s.add_dependency 'ruby-openai', '~> 7'
   s.add_dependency 'oj', '~> 3'
   # s.post_install_message = %q{Please check readme file for use instructions.}
 end
