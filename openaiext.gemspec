@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name          = 'openaiext'
-  s.version       = '0.0.3'
+  s.version       = '0.0.5'
   s.date          = '2024-10-13'
   s.platform      = Gem::Platform::RUBY
   s.summary       = 'Ruby OpenAI Extended'
