@@ -19,15 +19,15 @@ module OpenAIExt
     chat(messages: [{ role: :user, content: message_content }], model:, response_format:, max_tokens:, store:, tools:, auto_run_functions:, function_context:)    
   end  
 
-  def self.single_prompt(prompt:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil)
-    chat(messages: [{ user: prompt }], model:, response_format:, max_tokens:, store:, tools:, auto_run_functions:, function_context:, temperature:, top_p:, frequency_penalty:, presence_penalty:)
+  def self.single_prompt(prompt:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil, prediction: nil)
+    chat(messages: [{ user: prompt }], model:, response_format:, max_tokens:, store:, tools:, auto_run_functions:, function_context:, temperature:, top_p:, frequency_penalty:, presence_penalty:, prediction:)
   end
 
-  def self.single_chat(system:, user:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil)
-    chat(messages: [{ system: }, { user: }], model:, response_format:, max_tokens:, store:, tools:, auto_run_functions:, function_context:, temperature:, top_p:, frequency_penalty:, presence_penalty:)
+  def self.single_chat(system:, user:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil, prediction: nil)
+    chat(messages: [{ system: }, { user: }], model:, response_format:, max_tokens:, store:, tools:, auto_run_functions:, function_context:, temperature:, top_p:, frequency_penalty:, presence_penalty:, prediction:)
   end
 
-  def self.chat(messages:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil)
+  def self.chat(messages:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil, prediction: nil)
     model = OpenAIExt::Model.select(model)
     is_o1_model = model.start_with?('o1')
 
@@ -47,6 +47,7 @@ module OpenAIExt
     parameters[:top_p] = top_p if top_p
     parameters[:frequency_penalty] = frequency_penalty if frequency_penalty
     parameters[:presence_penalty] = presence_penalty if presence_penalty
+    parameters[:prediction] = prediction if prediction
 
     begin
       response = OpenAI::Client.new.chat(parameters:)
@@ -69,4 +70,13 @@ module OpenAIExt
   end
 
   def self.models = OpenAI::Client.new.models.list
+
+  def self.load_config
+    OpenAI.configure do |config|
+      config.access_token = ENV.fetch('OPENAI_ACCESS_TOKEN')
+      config.organization_id = ENV.fetch('OPENAI_ORGANIZATION_ID')
+      config.request_timeout = 300
+      config.log_errors = true
+    end
+  end
 end
