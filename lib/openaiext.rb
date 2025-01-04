@@ -1,3 +1,4 @@
+require 'oj'
 require 'openai'
 
 require 'openaiext/model'
@@ -20,53 +21,111 @@ module OpenAIExt
   end  
 
   def self.single_prompt(prompt:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil, prediction: nil)
-    chat(messages: [{ user: prompt }], model:, response_format:, max_tokens:, store:, tools:, auto_run_functions:, function_context:, temperature:, top_p:, frequency_penalty:, presence_penalty:, prediction:)
+    chat(messages: [{ role: 'user', content: prompt }], model:, response_format:, max_tokens:, store:, tools:, auto_run_functions:, function_context:, temperature:, top_p:, frequency_penalty:, presence_penalty:, prediction:)
   end
 
   def self.single_chat(system:, user:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil, prediction: nil)
-    chat(messages: [{ system: }, { user: }], model:, response_format:, max_tokens:, store:, tools:, auto_run_functions:, function_context:, temperature:, top_p:, frequency_penalty:, presence_penalty:, prediction:)
+    chat(
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user }
+      ],
+      model:,
+      response_format:,
+      max_tokens:,
+      store:,
+      tools:,
+      auto_run_functions:,
+      function_context:,
+      temperature:,
+      top_p:,
+      frequency_penalty:,
+      presence_penalty:,
+      prediction:
+    )
   end
 
-  def self.chat(messages:, model: :gpt_basic, response_format: nil, max_tokens: MAX_TOKENS, store: true, metadata: nil, tools: nil, auto_run_functions: false, function_context: nil, temperature: nil, top_p: nil, frequency_penalty: nil, presence_penalty: nil, prediction: nil)
-    model = OpenAIExt::Model.select(model)
-    is_o1_model = model.start_with?('o1')
+  class << self
+    def chat(messages:, model: :gpt_basic, **options)
+      model = Model.select(model)
+      messages = ensure_messages_format(messages)
+      parameters = build_chat_parameters(messages, model, options)
 
-    messages = OpenAIExt::Messages.new(messages) unless messages.is_a?(OpenAIExt::Messages)
-    
-    parameters = { model:, messages:, store: }
-    parameters[:metadata] = metadata if metadata
+      response = execute_chat(parameters)
+      handle_functions(response, parameters, options)
+    end
 
-    # o1 family models doesn't support max_tokens params. Instead, use max_completion_tokens
-    parameters[:max_completion_tokens] = max_tokens if is_o1_model
-    parameters[:max_tokens] = max_tokens unless is_o1_model
+    private
 
-    parameters[:response_format] = { type: 'json_object' } if response_format.eql?(:json)
-    parameters[:tools] = tools if tools
+    def ensure_messages_format(messages)
+      messages.is_a?(Messages) ? messages : Messages.new(messages)
+    end
 
-    parameters[:temperature] = temperature if temperature
-    parameters[:top_p] = top_p if top_p
-    parameters[:frequency_penalty] = frequency_penalty if frequency_penalty
-    parameters[:presence_penalty] = presence_penalty if presence_penalty
-    parameters[:prediction] = prediction if prediction
+    def build_chat_parameters(messages, model, options)
+      {
+        model: model,
+        messages: messages,
+        store: options.fetch(:store, true)
+      }.tap do |params|
+        add_token_params(params, model, options[:max_tokens])
+        add_optional_params(params, options)
+      end
+    end
 
-    begin
-      response = OpenAI::Client.new.chat(parameters:)
+    def add_token_params(params, model, max_tokens)
+      max_tokens ||= MAX_TOKENS
+      if Model.o1?(model)
+        params[:max_completion_tokens] = max_tokens
+      else
+        params[:max_tokens] = max_tokens
+      end
+    end
+
+    def add_optional_params(params, options)
+      params[:metadata] = options[:metadata] if options[:metadata]
+      params[:response_format] = { type: 'json_object' } if options[:response_format] == :json
+      params[:tools] = options[:tools] if options[:tools]
+      
+      %i[temperature top_p frequency_penalty presence_penalty prediction].each do |param|
+        params[param] = options[param] if options[param]
+      end
+    end
+
+    def execute_chat(parameters)
+      client = OpenAI::Client.new
+      
+      # Garantir que o modelo está correto
+      parameters[:model] = "gpt-4" # ou "gpt-3.5-turbo"
+      
+      # Garantir que o conteúdo da ferramenta está no formato correto
+      if parameters[:messages].any? { |m| m[:role] == "tool" }
+        tool_message = parameters[:messages].find { |m| m[:role] == "tool" }
+        tool_message[:content] = tool_message[:content].to_json if tool_message[:content].is_a?(Array)
+      end
+      
+      # Adicionar o tipo de conteúdo para mensagens que precisam
+      parameters[:messages].each do |message|
+        if message[:content].is_a?(Array)
+          message[:content].each { |c| c[:type] ||= "text" }
+        end
+      end
+
+      response = client.chat(parameters: parameters)
+      response
     rescue => e
-      raise "Error in OpenAI chat: #{e.message}\nParameters: #{parameters.inspect}"
+      raise "Error in OpenAI chat: #{e.message}"
     end
-    
-    response[:chat_params] = parameters   
-    response.extend(ResponseExtender)
 
-    if response.functions? && auto_run_functions
-      raise 'Function context not provided for auto-running functions' if function_context.nil?
+    def handle_functions(response, parameters, options)
+      return response unless response.functions? && options[:auto_run_functions]
+      
+      raise 'Function context not provided' if options[:function_context].nil?
+      
       parameters[:messages] << response.message
-      parameters[:messages] += response.functions_run_all(context: function_context)
-
-      response = chat(**parameters.except(:chat_params))
+      parameters[:messages] += response.functions_run_all(context: options[:function_context])
+      
+      chat(**parameters.except(:chat_params))
     end
-   
-    response
   end
 
   def self.models = OpenAI::Client.new.models.list
