@@ -42,7 +42,7 @@ module ResponseExtender
           tool_call_id: self[:id],
           role:         :tool,
           name:         self[:name],
-          content:      context.send(self[:name], **self[:arguments])
+          content:      Oj.dump(context.send(self[:name], **self[:arguments]))
         }
       end
 
