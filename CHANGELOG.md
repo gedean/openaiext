@@ -6,9 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - `debug_info` method to ResponseExtender for easier debugging of responses
-- Basic test suite for Messages class with RSpec
-- Added spec_helper.rb for testing support
+- Comprehensive test suite with RSpec:
+  - Tests for Messages class
+  - Tests for Model module
+  - Tests for ResponseExtender module
+  - Basic tests for main OpenAIExt module
+- Spec helper with mock OpenAI response generation
+- Added WebMock support for API testing
+- Added Rakefile with tasks for tests, linting, and documentation
 - Created CHANGELOG.md file
+- Updated gemspec with development dependencies
 
 ### Changed
 - Resolved all merge conflicts in codebase

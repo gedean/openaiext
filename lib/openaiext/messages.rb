@@ -20,6 +20,12 @@ module OpenAIExt
         case msg
         when Hash
           parse_hash_message(msg)
+        when Array
+          if msg.size == 2 && msg[0].is_a?(Symbol) && VALID_ROLES.include?(msg[0].to_s)
+            { role: msg[0].to_s, content: format_content(msg[1]) }
+          else
+            raise ArgumentError, "Invalid array message format: #{msg.inspect}. Expected [role, content]"
+          end
         else
           raise ArgumentError, "Invalid message format: #{msg.inspect}"
         end

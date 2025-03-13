@@ -1,6 +1,6 @@
 module ResponseExtender
   def chat_params
-    self[:chat_params]
+    self['chat_params']
   end
 
   def message
@@ -51,7 +51,7 @@ module ResponseExtender
             tool_call_id: self[:id],
             role:         :tool,
             name:         self[:name],
-            content:      Oj.dump(result)
+            content:      Oj.dump(result, mode: :compat)
           }
         rescue NoMethodError => e
           raise "Function '#{self[:name]}' not found in context: #{e.message}"

@@ -22,6 +22,28 @@ Or install it directly:
 gem install openaiext
 ```
 
+## Development
+
+After checking out the repo, run `bundle install` to install dependencies. Then, run `rake spec` to run the tests. You can also run `rake console` for an interactive prompt that will allow you to experiment.
+
+To run the test suite:
+
+```shell
+rake spec
+```
+
+To run the linter:
+
+```shell
+rake rubocop
+```
+
+To generate documentation:
+
+```shell
+rake doc
+```
+
 ## Configuration
 
 Set the following environment variables:
