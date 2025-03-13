@@ -4,7 +4,7 @@ module ResponseExtender
   end
 
   def message
-    dig('choices', 0, 'message')
+    dig('choices', 0, 'message') || {}
   end
 
   def content
@@ -31,19 +31,35 @@ module ResponseExtender
 
     tool_functions.map do |function|
       function_info = function['function']
+      
+      begin
+        arguments = Oj.load(function_info['arguments'], symbol_keys: true)
+      rescue Oj::ParseError => e
+        raise "Invalid function arguments JSON: #{e.message}\nArguments: #{function_info['arguments']}"
+      end
+      
       function_def = {
         id:        function['id'],
         name:      function_info['name'],
-        arguments: Oj.load(function_info['arguments'], symbol_keys: true)
+        arguments: arguments
       }
 
       function_def.define_singleton_method(:run) do |context:|
-        {
-          tool_call_id: self[:id],
-          role:         :tool,
-          name:         self[:name],
-          content:      Oj.dump(context.send(self[:name], **self[:arguments]))
-        }
+        begin
+          result = context.send(self[:name], **self[:arguments])
+          {
+            tool_call_id: self[:id],
+            role:         :tool,
+            name:         self[:name],
+            content:      Oj.dump(result)
+          }
+        rescue NoMethodError => e
+          raise "Function '#{self[:name]}' not found in context: #{e.message}"
+        rescue ArgumentError => e
+          raise "Invalid arguments for function '#{self[:name]}': #{e.message}"
+        rescue StandardError => e
+          raise "Error executing function '#{self[:name]}': #{e.message}"
+        end
       end
 
       function_def
@@ -51,12 +67,22 @@ module ResponseExtender
   end
 
   def functions_run_all(context:)
-    raise 'Nenhuma função para executar' if functions.empty?
+    raise 'No functions to execute' if functions.empty?
 
     functions.map { |function| function.run(context: context) }
   end
 
   def functions?
     functions.any?
+  end
+  
+  # Helper method for debugging response structure
+  def debug_info
+    {
+      id: self['id'],
+      model: self['model'],
+      choices_count: self['choices']&.length || 0,
+      function_calls: functions.map { |f| { name: f[:name], args: f[:arguments].keys } }
+    }
   end
 end
