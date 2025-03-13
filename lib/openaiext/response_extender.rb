@@ -1,43 +1,62 @@
 module ResponseExtender
-  def chat_params = self[:chat_params]
-  def message = dig('choices', 0, 'message')
-  def content = message&.dig('content')
-  def content? = !content.nil?
-  def tool_calls = message&.dig('tool_calls')
-  def tool_calls? = !tool_calls.nil?
+  def chat_params
+    self[:chat_params]
+  end
+
+  def message
+    dig('choices', 0, 'message')
+  end
+
+  def content
+    dig('choices', 0, 'message', 'content')
+  end
+
+  def content?
+    !content.nil?
+  end
+
+  def tool_calls
+    dig('choices', 0, 'message', 'tool_calls')
+  end
+
+  def tool_calls?
+    !tool_calls.nil?
+  end
 
   def functions
-    return if tool_calls.nil? || tool_calls.empty?
-    
-    tool_calls
-      .select { |tool| tool['type'] == 'function' }
-      .map { |function| build_function(function) }
-  end
+    return [] unless tool_calls&.any?
 
-  def functions? = !functions.nil?
+    tool_functions = tool_calls.select { |tool| tool['type'] == 'function' }
+    return [] if tool_functions.empty?
 
-  def functions_run_all(context:)
-    raise 'No functions to run' if functions.nil? || functions.empty?
-    functions.map { |function| function.run(context:) }
-  end
+    tool_functions.map do |function|
+      function_info = function['function']
+      function_def = {
+        id:        function['id'],
+        name:      function_info['name'],
+        arguments: Oj.load(function_info['arguments'], symbol_keys: true)
+      }
 
-  private
-
-  def build_function(function)
-    function_info = function['function']
-    {
-      id: function['id'],
-      name: function_info['name'],
-      arguments: Oj.load(function_info['arguments'], symbol_keys: true)
-    }.tap do |func|
-      def func.run(context:)
+      function_def.define_singleton_method(:run) do |context:|
         {
           tool_call_id: self[:id],
-          role: :tool,
-          name: self[:name],
-          content: context.send(self[:name], **self[:arguments])
+          role:         :tool,
+          name:         self[:name],
+          content:      Oj.dump(context.send(self[:name], **self[:arguments]))
         }
       end
+
+      function_def
     end
+  end
+
+  def functions_run_all(context:)
+    raise 'Nenhuma função para executar' if functions.empty?
+
+    functions.map { |function| function.run(context: context) }
+  end
+
+  def functions?
+    functions.any?
   end
 end
