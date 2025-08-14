@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name          = 'openaiext'
-  s.version       = '0.0.10'
-  s.date          = '2025-03-12'
+  s.version       = '0.0.12'
+  s.date          = '2025-01-10'
   s.platform      = Gem::Platform::RUBY
   s.summary       = 'Ruby OpenAI Extended'
   s.description   = 'Based on ruby-openai, adds some extra features for working with OpenAI APIs'
@@ -14,13 +14,13 @@ Gem::Specification.new do |s|
   s.license       = 'MIT'
   
   # Runtime dependencies
-  s.add_dependency 'ruby-openai', '~> 7'
+  s.add_dependency 'ruby-openai', '~> 8'
   s.add_dependency 'oj', '~> 3'
   
   # Development dependencies
-  s.add_development_dependency 'rspec', '~> 3.12'
-  s.add_development_dependency 'webmock', '~> 3.18'
-  s.add_development_dependency 'rubocop', '~> 1.50'
+  s.add_development_dependency 'rspec', '~> 3'
+  s.add_development_dependency 'webmock', '~> 3'
+  s.add_development_dependency 'rubocop', '~> 1'
   s.add_development_dependency 'simplecov', '~> 0.22'
   s.add_development_dependency 'yard', '~> 0.9'
 end
